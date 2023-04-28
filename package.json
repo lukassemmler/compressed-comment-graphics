@@ -1,0 +1,22 @@
+{
+  "name": "compressed-comment-graphics",
+  "version": "0.1.0",
+  "description": "A custom file format to store images with binary pixels efficiently",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "graphics",
+    "file",
+    "format",
+    "png",
+    "ccg"
+  ],
+  "author": "Lukas Semmler <kontakt@lukassemmler.de>",
+  "license": "ISC",
+  "dependencies": {
+    "png-js": "^1.0.0"
+  }
+}
