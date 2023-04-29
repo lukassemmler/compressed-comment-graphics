@@ -1,4 +1,7 @@
+// https://stackoverflow.com/questions/11247790/reading-a-png-image-in-node-js
+
 var PNG = require('png-js');
+const fs = require("fs");
 
 const Brightness = Object.freeze({
   Light: 1,
@@ -33,42 +36,57 @@ function getRawChunkByte(bits) {
   return byte;
 }
 
-function getRawChunkByte(stack) {
-
+function readPngImageAsBits(filePath) {
+  const image = PNG.load(filePath);
+  const size = image.width * image.height;
+  const bits = new Uint8Array(size);
+  image.decode(function (pixels) {
+    const pixelsArray = new Uint8Array(pixels);
+    for (let i = 0; i < size; i++) {
+      const j = i * 4;
+      const pixel = pixelsArray.slice(j, j + 4);
+      const [r, g, b, a] = pixel;
+      const brightness = Math.round((r + g + b) / 3);
+      const type = brightness > 127 ? Brightness.Light : Brightness.Dark;
+      bits[i] = type;
+    }
+  });
+  return bits;
 }
 
-PNG.decode('media/nintendo-land.png', function(pixels) {
-  const pixelsArray = new Uint8Array(pixels);
-  //let brightnessChanges = 0;
-  let lastFlushIndex = -1;
-  let currentBrightness = -1;
-  let currentStreak = -1;
-  for (let i = 0; i < pixelsArray.length; i +=4 ) {
-    const pixel = pixelsArray.slice(i, i + 4);
-    const [ r, g, b, a ] = pixel;
-    const brightness = Math.round((r + g + b) / 3);
-    const type = brightness > 127 ? Brightness.Light : Brightness.Dark;
-    if (type === currentBrightness) {
-      currentStreak++;
-      // Case 3: Streak with more than 64 bits
-      //   gets broken up and written as a repeater chunk
-      getRepeaterChunkByte(stack);
-    } else {
-      currentBrightness = type;
-      currentStreak = 1;
-      //brightnessChanges++;
-      // Case 2: Streak with at least 8 bits
-      //   gets written as a repeater chunk
-      getRepeaterChunkByte(stack);
+function encodeAsCcg(filePath) {
+  const bits = readPngImageAsBits(filePath);
+  console.log(bits.length);
+  //console.log(bits.length);
+  /*
+    //let brightnessChanges = 0;
+    let lastFlushIndex = -1;
+    let currentBrightness = -1;
+    let currentStreak = -1;
+      if (type === currentBrightness) {
+        currentStreak++;
+        // Case 3: Streak with more than 64 bits
+        //   gets broken up and written as a repeater chunk
+        getRepeaterChunkByte(stack);
+      } else {
+        currentBrightness = type;
+        currentStreak = 1;
+        //brightnessChanges++;
+        // Case 2: Streak with at least 8 bits
+        //   gets written as a repeater chunk
+        getRepeaterChunkByte(stack);
+      }
+      if (stack.length < 7) continue;
+      if (stack.length === currentStreak) continue;
+      // Case 1: Random sequence of 7 bits 
+      //   get written as a raw chunk
+      //const rawBits = 
+      getRawChunkByte(stack);
     }
-    if (stack.length < 7) continue;
-    if (stack.length === currentStreak) continue;
-    // Case 1: Random sequence of 7 bits 
-    //   get written as a raw chunk
-    //const rawBits = 
-    getRawChunkByte(stack);
-  }
-  console.log(brightnessChanges);
-  //const brightness = 
-  // pixels is a 1d array (in rgba order) of decoded pixel data
-});
+    console.log(brightnessChanges);
+    //const brightness = 
+    // pixels is a 1d array (in rgba order) of decoded pixel data
+  */
+}
+
+encodeAsCcg("media/nintendo-land-test.png");
