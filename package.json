@@ -17,6 +17,6 @@
   "author": "Lukas Semmler <kontakt@lukassemmler.de>",
   "license": "ISC",
   "dependencies": {
-    "png-js": "^1.0.0"
+    "pngjs": "^7.0.0"
   }
 }
