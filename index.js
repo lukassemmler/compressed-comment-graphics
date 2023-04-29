@@ -43,7 +43,6 @@ function readPngImageAsBits(filePath) {
   const { height, width } = image;
   const size = width * height;
   const bits = new Uint8Array(size);
-  //image.decode(() => { });
   const pixelsArray = new Uint8Array(image.data);
   for (let y = 0; y < height; y++)
     for (let x = 0; x < width; x++) {
@@ -58,40 +57,67 @@ function readPngImageAsBits(filePath) {
   return bits;
 }
 
+function compressBitSequence(bits) {
+  const bytes = [];
+  let currentBrightness = -1;
+  let currentStreak = 0;
+  let lastFlush = -1;
+
+  const flush = (index, byteGenerator, ...args) => {
+    bytes.push(byteGenerator(...args));
+    currentBrightness = -1;
+    currentStreak = 0;
+    lastFlush = index;
+  };
+
+  for (let i = 0; i < bits.length; i++) {
+    const bit = bits[i];
+    if (bit === currentBrightness) {
+      currentStreak++;
+      // Case 1: Streak with more than 64 bits -- gets broken up and written as a repeater chunk
+      if (currentStreak === 64)
+        flush(i, getRepeaterChunkByte, currentBrightness, currentStreak);
+      continue;
+    }
+    // Case 2: Streak with at least 8 bits -- gets written as a repeater chunk
+    if (currentStreak > 7) {
+      flush(i, getRepeaterChunkByte, currentBrightness, currentStreak);
+      continue;
+    }
+    currentBrightness = bit;
+    currentStreak = 1;
+    // Case 3: Random sequence of 7 bits -- get written as a raw chunk
+    if (i - lastFlush === 7 || i === bits.length - 1) {
+      const rawBits = bits.slice(lastFlush, i);
+      flush(i, getRawChunkByte, rawBits);
+      continue;
+    }
+    // Case 4: No chunk byte is full yet -- do nothing
+  }
+
+  return Uint8Array.from(bytes);
+}
+
+function getBinaryString(number) {
+  // Gets binary string and groups 4 bits together
+  const binary = (number >>> 0).toString(2);
+  const digits = Math.ceil(binary.length / 4) * 4;
+  const paddedBinary = binary.padStart(digits, 0);
+  const words = [];
+  for (let i = 0; i < paddedBinary.length; i += 4) {
+    const index = paddedBinary.length - i;
+    words.unshift(paddedBinary.slice(index - 4, index));
+  }
+  return words.join(" ");
+}
+
 function encodeAsCcg(filePath) {
   const bits = readPngImageAsBits(filePath);
-  printBits(bits, 32);
-  console.log(bits.length);
+  const compressedData = compressBitSequence(bits);
+  console.log([...compressedData].map(byte => getBinaryString(byte)));
+  //printBits(bits, 32);
   //console.log(bits.length);
-  /*
-    //let brightnessChanges = 0;
-    let lastFlushIndex = -1;
-    let currentBrightness = -1;
-    let currentStreak = -1;
-      if (type === currentBrightness) {
-        currentStreak++;
-        // Case 3: Streak with more than 64 bits
-        //   gets broken up and written as a repeater chunk
-        getRepeaterChunkByte(stack);
-      } else {
-        currentBrightness = type;
-        currentStreak = 1;
-        //brightnessChanges++;
-        // Case 2: Streak with at least 8 bits
-        //   gets written as a repeater chunk
-        getRepeaterChunkByte(stack);
-      }
-      if (stack.length < 7) continue;
-      if (stack.length === currentStreak) continue;
-      // Case 1: Random sequence of 7 bits 
-      //   get written as a raw chunk
-      //const rawBits = 
-      getRawChunkByte(stack);
-    }
-    console.log(brightnessChanges);
-    //const brightness = 
-    // pixels is a 1d array (in rgba order) of decoded pixel data
-  */
+  //console.log(bits.length);
 }
 
 function printBits(bits, width) {
