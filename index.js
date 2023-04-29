@@ -1,6 +1,7 @@
 // https://stackoverflow.com/questions/11247790/reading-a-png-image-in-node-js
 
-var PNG = require('png-js');
+const Buffer = require('node:buffer').Buffer;
+var PNG = require('pngjs').PNG;
 const fs = require("fs");
 
 const Brightness = Object.freeze({
@@ -37,12 +38,16 @@ function getRawChunkByte(bits) {
 }
 
 function readPngImageAsBits(filePath) {
-  const image = PNG.load(filePath);
-  const size = image.width * image.height;
+  const data = fs.readFileSync(filePath);
+  const image = PNG.sync.read(data);
+  const { height, width } = image;
+  const size = width * height;
   const bits = new Uint8Array(size);
-  image.decode(function (pixels) {
-    const pixelsArray = new Uint8Array(pixels);
-    for (let i = 0; i < size; i++) {
+  //image.decode(() => { });
+  const pixelsArray = new Uint8Array(image.data);
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) {
+      const i = width * y + x;
       const j = i * 4;
       const pixel = pixelsArray.slice(j, j + 4);
       const [r, g, b, a] = pixel;
@@ -50,12 +55,12 @@ function readPngImageAsBits(filePath) {
       const type = brightness > 127 ? Brightness.Light : Brightness.Dark;
       bits[i] = type;
     }
-  });
   return bits;
 }
 
 function encodeAsCcg(filePath) {
   const bits = readPngImageAsBits(filePath);
+  printBits(bits, 32);
   console.log(bits.length);
   //console.log(bits.length);
   /*
@@ -89,4 +94,60 @@ function encodeAsCcg(filePath) {
   */
 }
 
-encodeAsCcg("media/nintendo-land-test.png");
+function printBits(bits, width) {
+  /*
+  const rows = Math.ceil(bits.length / width);
+  for (let y = 0; y < rows; y++) {
+    const buffer = Buffer.alloc(width, "-");
+
+  }
+  */
+  const string = [...bits].join("");
+  const regex = new RegExp(`(.{${width}})`, "gm");
+  const formattedString = string.replace(regex, "$1\n");
+  console.log(formattedString);
+}
+
+encodeAsCcg("media/letter-n.png");
+
+/*
+fs.createReadStream('media/test-palette.png')
+  .pipe(new PNG())
+  .on('parsed', function() {
+
+    for (var y = 0; y < this.height; y++) {
+        for (var x = 0; x < this.width; x++) {
+            var idx = (this.width * y + x) << 2;
+
+            // invert color
+            const r = 255 - this.data[idx]; // R
+            const g = 255 - this.data[idx+1]; // G
+            const b = 255 - this.data[idx+2]; // B
+
+            // and reduce opacity
+            const a = this.data[idx+3] >> 1;
+
+        console.log(`Pixel at (${x},${y}): rgba(${r},${g},${b},${a})`);
+
+        }
+    }
+});
+*/
+
+/*
+fs.createReadStream('media/test-palette.png')
+  .pipe(new PNG())
+  .on('parsed', function () {
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 0; x < this.width; x++) {
+        const idx = (this.width * y + x) << 2;
+        // get pixel data for (x,y)
+        const r = this.data[idx];
+        const g = this.data[idx + 1];
+        const b = this.data[idx + 2];
+        const a = this.data[idx + 3];
+        console.log(`Pixel at (${x},${y}): rgba(${r},${g},${b},${a})`);
+      }
+    }
+  });
+*/
