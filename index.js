@@ -61,7 +61,7 @@ function compressBitSequence(bits) {
   const bytes = [];
   let memory = -1;    // Resets each time a byte is generated.
   let streak = 0;     // Resets each time a byte is generated.
-  let lastFlush = -1; // Remembers the index of the last flush (end of byte?)
+  let lastFlush = 0;  // Remembers the index of the last flush (end of byte?)
 
   const flush = (index, byteGenerator, ...args) => {
     bytes.push(byteGenerator(...args));
@@ -78,6 +78,8 @@ function compressBitSequence(bits) {
 
     if (streak > 7 && bit !== memory) {
       flush(i, getRepeaterChunkByte, memory, streak);
+      memory = bit;
+      streak = 1;
       continue;
     }
 
@@ -101,9 +103,10 @@ function compressBitSequence(bits) {
 
     const currentDistance = i - lastFlush + 1;
 
-    if (currentDistance === 7) {
-      const rawBits = bits.slice(lastFlush + 1, i);
+    if (currentDistance === 7 && currentDistance !== streak) {
+      const rawBits = bits.slice(lastFlush, i + 1);
       flush(i, getRawChunkByte, rawBits);
+      lastFlush++;
       continue;
     }
     
